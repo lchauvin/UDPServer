@@ -35,6 +35,8 @@
 #include <iostream>
 #include <fcntl.h>
 
+#define DUMP_UDP 1
+
 class vtkMultiThreader;
 
 class VTK_UDPServer_EXPORT vtkUDPServerLogic : public vtkSlicerModuleLogic
@@ -67,6 +69,10 @@ class VTK_UDPServer_EXPORT vtkUDPServerLogic : public vtkSlicerModuleLogic
 
   void SetUDPServerNode(vtkMRMLUDPServerNode* srvNode) { this->UDPServerNode = srvNode; }
   //vtkSetObjectMacro(UDPServerNode, vtkMRMLUDPServerNode*);
+
+#if DUMP_UDP
+  void DumpUDPDataTimerEvents();
+#endif
 
   int ProbeType; //Probe Type 0 for rejection probe and 1 for single probe
 

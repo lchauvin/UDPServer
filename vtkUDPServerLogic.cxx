@@ -20,10 +20,9 @@
 
 #include "vtkUDPServerLogic.h"
 #include "vtkMultiThreader.h"
+#include "vtkKWTkUtilities.h"
 
 #include <string>
-
-#define DUMP_UDP 1
 
 vtkCxxRevisionMacro(vtkUDPServerLogic, "$Revision: 1.9.12.1 $");
 vtkStandardNewMacro(vtkUDPServerLogic);
@@ -49,18 +48,6 @@ vtkUDPServerLogic::vtkUDPServerLogic()
 
   // Dump UDP data
   this->UDPServerNode = NULL;
-
-  time_t rawtime;
-  time(&rawtime);
-  struct tm* timeinfo;
-  timeinfo = localtime(&rawtime);
-
-  char timebuffer[128];
-  strftime(timebuffer, 128, "BetaProbe UDP Dump [%m_%d_%Y] %H%M%S", timeinfo);
-
-  std::stringstream filename;
-  filename << timebuffer << ".log";
-  this->udpDumpLogFile.open(filename.str().c_str(), std::ios::out);
 }
 
 //---------------------------------------------------------------------------
@@ -154,19 +141,6 @@ void vtkUDPServerLogic::ImportData()
     }
   this->buffer[received]= '\0';
 
-#if DUMP_UDP
-  if (this->UDPServerNode)
-    {
-    if (this->UDPServerNode->GetDumpUDP() == 1)
-      {
-      if (this->udpDumpLogFile.is_open())
-        {
-        this->udpDumpLogFile << buffer << std::endl;
-        }
-      }
-    }
-#endif
-
   this->ImportedData = this->buffer;
 }
 
@@ -184,6 +158,25 @@ int vtkUDPServerLogic::Start(int p)
     }
   //Start Thread
   this->ThreadID = this->Thread->SpawnThread((vtkThreadFunctionType) &vtkUDPServerLogic::ThreadFunction, this);
+
+  // DUMP UDP Data
+
+  time_t rawtime;
+  time(&rawtime);
+  struct tm* timeinfo;
+  timeinfo = localtime(&rawtime);
+
+  char timebuffer[128];
+  strftime(timebuffer, 128, "BetaProbe_UDP_Dump_[%m_%d_%Y]_%H%M%S", timeinfo);
+
+  std::stringstream filename;
+  filename << timebuffer << ".log";
+  this->udpDumpLogFile.open(filename.str().c_str(), std::ios::out);
+
+#if DUMP_UDP
+  this->DumpUDPDataTimerEvents();
+#endif
+
   return 1;
 }
 
@@ -227,3 +220,24 @@ int vtkUDPServerLogic::Stop()
     return 0;
     }
 }
+
+#if DUMP_UDP
+//---------------------------------------------------------------------------
+void vtkUDPServerLogic::DumpUDPDataTimerEvents()
+{
+  if (this->UDPServerNode)
+    {
+    if (this->UDPServerNode->GetDumpUDP() == 1)
+      {
+      if (this->udpDumpLogFile.is_open())
+        {
+        this->udpDumpLogFile << this->ImportedData;
+        }
+      }
+    }
+  vtkKWTkUtilities::CreateTimerHandler(vtkKWApplication::GetMainInterp(),
+				       100,
+				       this, "DumpUDPDataTimerEvents");
+  std::cerr << "DUMP UDP DATA" << std::endl;
+}
+#endif
